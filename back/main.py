@@ -1,39 +1,63 @@
+# ============================================================
+# main.py — Point d'entrée de l'application FastAPI
+# C'est ici que tout démarre — serveur, routes, middleware
+# Lancer avec : uvicorn main:app --reload
+# ============================================================
+
 from fastapi import FastAPI
-from typing import List
-# Import des modèles depuis le fichier models.py
-from models import WeatherResponse, AirQualityResponse, Event, PredictionResponse, UrbanScore
+from fastapi.middleware.cors import CORSMiddleware
+from database import engine, Base
+from routers import weather, air, events, score
 
-app = FastAPI(title="CityPulse API")
+# ============================================================
+# Création des tables PostgreSQL automatiquement
+# SQLAlchemy lit les modèles de models.py et crée les tables
+# si elles n'existent pas encore dans la BDD
+# ============================================================
+Base.metadata.create_all(bind=engine)
 
-@app.get("/api/weather/{city}", response_model=WeatherResponse)
-async def get_weather(city: str):
+# ============================================================
+# Initialisation de l'application FastAPI
+# title/description/version → visibles dans le Swagger /docs
+# ============================================================
+app = FastAPI(
+    title="CityPulse API",
+    description="Tableau de bord urbain intelligent — Paris 🏙️",
+    version="1.0.0"
+)
+
+# ============================================================
+# Middleware CORS — Cross Origin Resource Sharing
+# Permet au front React (autre port/domaine) d'appeler l'API
+# Sans ça, le navigateur bloquerait les requêtes du front
+# ============================================================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],      # Autorise tous les domaines (à restreindre en production)
+    allow_methods=["*"],      # Autorise GET, POST, PUT, DELETE etc.
+    allow_headers=["*"],      # Autorise tous les headers HTTP
+)
+
+# ============================================================
+# Inclusion des routers — chaque fichier gère une fonctionnalité
+# prefix="/api" → tous les endpoints commencent par /api/...
+# tags → catégories visibles dans le Swagger /docs
+# ============================================================
+app.include_router(weather.router, prefix="/api", tags=["🌤️ Météo"])
+app.include_router(air.router,     prefix="/api", tags=["🌬️ Qualité de l'air"])
+app.include_router(events.router,  prefix="/api", tags=["🎭 Événements"])
+app.include_router(score.router,   prefix="/api", tags=["📊 Score urbain"])
+
+# ============================================================
+# Route racine — endpoint de santé de l'API
+# Accessible sur http://127.0.0.1:8000/
+# Utile pour vérifier que le serveur tourne
+# ============================================================
+@app.get("/")
+def root():
     return {
-        "city": city,
-        "temperature": 22.5,
-        "feels_like": 24.0,
-        "description": "Ensoleillé",
-        "humidity": 45
+        "message": "CityPulse API — Paris 🏙️",
+        "status": "running",
+        "docs": "http://127.0.0.1:8000/docs",
+        "version": "1.0.0"
     }
-
-@app.get("/api/air/{city}", response_model=AirQualityResponse)
-async def get_air(city: str):
-    return {
-        "city": city,
-        "aqi": 42,
-        "status": "Bon",
-        "health_recommendation": "Parfait pour une balade."
-    }
-
-@app.get("/api/events/{city}", response_model=List[Event])
-async def get_events(city: str):
-    return [
-        {"name": "Festival Lumière", "date": "2024-10-12", "location": "Lyon", "category": "Cinéma"}
-    ]
-
-@app.get("/api/predict/{city}", response_model=PredictionResponse)
-async def get_prediction(city: str):
-    return {"city": city, "prediction_6h": 21.0, "confidence_score": 0.85}
-
-@app.get("/api/score/{city}", response_model=UrbanScore)
-async def get_urban_score(city: str):
-    return {"city": city, "global_score": 82, "level": "Très Bien"}
