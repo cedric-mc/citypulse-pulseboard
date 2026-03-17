@@ -1,0 +1,54 @@
+{
+  "model_info": {
+    "name": "CityPulse Temperature Predictor",
+    "version": "1.0",
+    "training_date": "2026-03-17 11:00:18",
+    "city": "Paris"
+  },
+  "performance": {
+    "test_mae_celsius": 2.06,
+    "confidence_score": 0.59,
+    "test_r2": -1.387
+  },
+  "features_used": [
+    "hour_sin",
+    "hour_cos",
+    "day_sin",
+    "day_cos",
+    "humidity",
+    "wind_speed",
+    "pressure",
+    "humidity_lag_1",
+    "wind_lag_1",
+    "temp_rolling_mean_6"
+  ],
+  "feature_importance": {
+    "hour_sin": -2.615,
+    "hour_cos": -4.249,
+    "day_sin": -0.279,
+    "day_cos": -1.507,
+    "humidity": -0.061,
+    "wind_speed": -0.178,
+    "pressure": -0.098,
+    "humidity_lag_1": 0.118,
+    "wind_lag_1": 0.686,
+    "temp_rolling_mean_6": 2.476
+  },
+  "api_endpoint": "/api/predict",
+  "input_format": {
+    "city": "string",
+    "hours": "integer (optional, default=6)"
+  },
+  "output_format": {
+    "city": "string",
+    "predictions": [
+      {
+        "hour": "integer",
+        "datetime": "string",
+        "predicted_temperature": "float"
+      }
+    ],
+    "confidence": "float",
+    "model_mae": "float"
+  }
+}
