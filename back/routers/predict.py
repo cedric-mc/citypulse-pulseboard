@@ -18,16 +18,17 @@ try:
     with open(metadata_path, 'rb') as f:
         metadata = pickle.load(f)
     model_loaded = True
-except:
+    print("✅ Modèle chargé avec succès")
+except Exception as e:
     model_loaded = False
-    print("⚠️ Modèle non chargé - vérifie le chemin")
+    print(f"⚠️ Modèle non chargé: {e}")
 
 @router.get("/api/predict/{city}")
 async def predict_weather(city: str, hours: int = 6):
     """
     Prédit la température pour les prochaines heures
-    - **city**: Nom de la ville (Paris, Lyon, etc.)
-    - **hours**: Nombre d'heures à prédire (max 6, défaut=6)
+    - **city**: Nom de la ville
+    - **hours**: Nombre d'heures à prédire (max 6)
     """
     if not model_loaded:
         raise HTTPException(status_code=500, detail="Modèle non disponible")
@@ -36,13 +37,15 @@ async def predict_weather(city: str, hours: int = 6):
         hours = 6
     
     try:
-        # Appel à l'API OpenWeatherMap
-        API_KEY = os.getenv('API_KEY', 'ea71ace172bc2af269e7d9b238ba9c5e')
-        url = f"https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={API_KEY}&units=metric"
+        # Clé API
+        API_KEY = os.getenv('OPENWEATHER_API_KEY') or os.getenv('API_KEY') or 'ea71ace172bc2af269e7d9b238ba9c5e'
         
+        # Appel API OpenWeatherMap
+        url = f"https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={API_KEY}&units=metric"
         response = requests.get(url)
+        
         if response.status_code != 200:
-            raise HTTPException(status_code=404, detail="Ville non trouvée")
+            raise HTTPException(status_code=404, detail=f"Ville '{city}' non trouvée")
         
         data = response.json()
         
@@ -82,7 +85,7 @@ async def predict_weather(city: str, hours: int = 6):
                 'temp_rolling_mean_6': df.iloc[i:i+6]['temperature'].mean()
             }
             
-            # Créer DataFrame avec le bon ordre des colonnes
+            # Créer DataFrame avec le bon ordre
             X_pred = pd.DataFrame([features])[features_list]
             
             # Prédire
@@ -97,8 +100,8 @@ async def predict_weather(city: str, hours: int = 6):
         return {
             'city': city,
             'predictions': predictions,
-            'confidence': metadata.get('confidence_score', 0.5),
-            'model_mae': metadata.get('metrics', {}).get('test_mae', 2.0)
+            'confidence': metadata.get('confidence_score', 0.59),
+            'model_mae': metadata.get('metrics', {}).get('test_mae', 2.06)
         }
         
     except Exception as e:
