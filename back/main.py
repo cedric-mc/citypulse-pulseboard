@@ -7,7 +7,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
-from routers import weather, air, events, score
+from routers import weather, air, events, score, predict  # 👈 AJOUT DE predict
 
 # ============================================================
 # Création des tables PostgreSQL automatiquement
@@ -47,6 +47,7 @@ app.include_router(weather.router, prefix="/api", tags=["🌤️ Météo"])
 app.include_router(air.router,     prefix="/api", tags=["🌬️ Qualité de l'air"])
 app.include_router(events.router,  prefix="/api", tags=["🎭 Événements"])
 app.include_router(score.router,   prefix="/api", tags=["📊 Score urbain"])
+app.include_router(predict.router, prefix="/api", tags=["🤖 Prédictions IA"])  # 👈 AJOUT DE LA LIGNE
 
 # ============================================================
 # Route racine — endpoint de santé de l'API

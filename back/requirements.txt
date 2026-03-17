@@ -22,3 +22,6 @@ uvicorn==0.42.0
 sqlalchemy
 psycopg2-binary
 python-dotenv
+scikit-learn==1.6.0
+pandas==2.2.0
+numpy==1.26.0
