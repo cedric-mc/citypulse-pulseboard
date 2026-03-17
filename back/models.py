@@ -57,19 +57,3 @@ class Event(Base):
     location    = Column(String)                     # Lieu
     category    = Column(String)                     # Catégorie (Culture, Loisirs...)
     created_at  = Column(DateTime, default=func.now())  # Timestamp automatique
-
-# ============================================================
-# Table : urban_scores
-# Stocke le score urbain calculé pour chaque ville
-# Score global = combinaison météo + qualité air + événements
-# ============================================================
-class UrbanScore(Base):
-    __tablename__ = "urban_scores"
-
-    id             = Column(Integer, primary_key=True, index=True)
-    city           = Column(String, index=True)  # Nom de la ville
-    score          = Column(Float)               # Score global 0-100
-    weather_score  = Column(Float)               # Sous-score météo (40% du total)
-    air_score      = Column(Float)               # Sous-score qualité air (40% du total)
-    events_score   = Column(Float)               # Sous-score événements (20% du total)
-    created_at     = Column(DateTime, default=func.now())  # Timestamp automatique

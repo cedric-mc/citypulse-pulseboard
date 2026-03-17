@@ -1,8 +1,13 @@
 import psycopg2
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv("../.env")
+ROOT_DIR = Path(__file__).resolve().parents[1]
+SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
+
+# Le .env est stocke dans back/.env
+load_dotenv(ROOT_DIR / "back" / ".env")
 
 def init_db():
     try:
@@ -11,7 +16,7 @@ def init_db():
         cur = conn.cursor()
         
         # Lecture du fichier SQL
-        with open('schema.sql', 'r') as f:
+        with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
             cur.execute(f.read())
         
         conn.commit()
