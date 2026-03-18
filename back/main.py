@@ -5,7 +5,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
+<<<<<<< Updated upstream
 from routers import weather, air, events, score, predict  # ← predict ajouté
+=======
+from routers import weather, air, events, score, predict
+>>>>>>> Stashed changes
 
 # Création des tables PostgreSQL
 Base.metadata.create_all(bind=engine)
@@ -30,9 +34,18 @@ app.include_router(weather.router, prefix="/api", tags=["🌤️ Météo"])
 app.include_router(air.router,     prefix="/api", tags=["🌬️ Qualité de l'air"])
 app.include_router(events.router,  prefix="/api", tags=["🎭 Événements"])
 app.include_router(score.router,   prefix="/api", tags=["📊 Score urbain"])
+<<<<<<< Updated upstream
 app.include_router(predict.router, prefix="/api", tags=["🤖 Prédictions IA"])  # ← TON endpoint
 
 # Route racine
+=======
+app.include_router(predict.router, prefix="/api", tags=["🤖 Prédictions IA"]) 
+# ============================================================
+# Route racine — endpoint de santé de l'API
+# Accessible sur http://127.0.0.1:8000/
+# Utile pour vérifier que le serveur tourne
+# ============================================================
+>>>>>>> Stashed changes
 @app.get("/")
 def root():
     return {
