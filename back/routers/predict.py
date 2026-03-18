@@ -23,7 +23,8 @@ except Exception as e:
     model_loaded = False
     print(f"⚠️ Modèle non chargé: {e}")
 
-@router.get("/api/predict/{city}")
+# ⚠️ CORRECTION : suppression du "/api" pour éviter le double préfixe
+@router.get("/predict/{city}")
 async def predict_weather(city: str, hours: int = 6):
     """
     Prédit la température pour les prochaines heures
