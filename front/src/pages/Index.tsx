@@ -94,7 +94,7 @@ const Index = () => {
 
           {/* Air Quality + Prediction */}
           {air.loading ? <CardLoader /> : air.error ? <CardError message={air.error} onRetry={air.refetch} /> : air.data && <AirQualityCard data={air.data} />}
-          <PredictionCard />
+          <PredictionCard city={selectedCity} />
 
           {/* Map */}
           <div className="md:col-span-2">
