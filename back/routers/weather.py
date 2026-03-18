@@ -6,7 +6,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from services.openweather import get_weather, get_forecast
+from services.openweather import get_forecast
+from services.data_pipeline import refresh_city_data, get_latest_weather, weather_to_response
 
 # Crée le router — sera inclus dans main.py
 router = APIRouter()
@@ -19,8 +20,11 @@ router = APIRouter()
 @router.get("/weather/{city}")
 async def weather_current(city: str, db: Session = Depends(get_db)):
     try:
-        data = await get_weather(city)
-        return data
+        await refresh_city_data(db, city)
+        row = get_latest_weather(db, city)
+        if not row:
+            raise HTTPException(status_code=404, detail="Aucune donnée météo en base")
+        return weather_to_response(row)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
