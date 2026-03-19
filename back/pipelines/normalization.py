@@ -9,9 +9,10 @@ from __future__ import annotations
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
-# Fuseau horaire Paris (UTC+1 en hiver, UTC+2 en été)
-# On utilise la conversion automatique via astimezone
-PARIS_TZ = timezone(timedelta(hours=1))
+# Fuseau horaire France métropolitaine (UTC+1)
+# Valable pour toutes les villes de France métropolitaine
+# UTC+1 en hiver, UTC+2 en été — on utilise +1 comme base fixe
+FRANCE_TZ = timezone(timedelta(hours=1))
 
 
 def normalize_city(raw_city: str) -> str:
@@ -54,6 +55,16 @@ def parse_iso_datetime(value: str | None) -> datetime | None:
         return None
 
 
+def to_float_or_none(value: Any) -> float | None:
+    """Convertit une valeur en float ou retourne None si invalide.
+    Utilisé pour les coordonnées GPS — None si absent plutôt que 0.0
+    pour éviter de placer des marqueurs au milieu de l'océan."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 # ============================================================
 # Normalisation météo
 # Transforme la réponse OpenWeatherMap en payload BDD propre
@@ -89,7 +100,7 @@ def normalize_air_payload(city: str, payload: dict[str, Any]) -> dict[str, Any]:
 # Normalisation événement
 # Transforme la réponse OpenAgenda en payload BDD propre
 # Retourne None si la date est absente (event invalide)
-# Convertit les dates en heure de Paris pour cohérence
+# Convertit les dates en heure de France (UTC+1) pour cohérence
 # ============================================================
 def normalize_event_payload(city: str, event: dict[str, Any]) -> dict[str, Any] | None:
     date_raw = event.get("date")
@@ -99,20 +110,16 @@ def normalize_event_payload(city: str, event: dict[str, Any]) -> dict[str, Any] 
     if not dt:
         return None
 
-    # Convertit en heure de Paris pour éviter les décalages UTC
+    # Convertit en heure de France (UTC+1) pour éviter les décalages UTC
     # OpenAgenda retourne des dates avec fuseau (+01:00 ou +02:00)
-    # On normalise tout en heure Paris pour cohérence BDD/frontend
+    # On normalise tout en heure France pour cohérence BDD/frontend
     try:
-        dt_paris = dt.astimezone(PARIS_TZ)
+        dt_france = dt.astimezone(FRANCE_TZ)
     except Exception:
-        dt_paris = dt
+        dt_france = dt
 
-    event_date = dt_paris.date()
-    start_time = dt_paris.time().replace(tzinfo=None)
-
-    # URL directe vers la page de l'événement sur OpenAgenda
-    # Champ séparé de external_id pour éviter toute confusion
-    url = str(event.get("url") or "")[:500] or None
+    event_date = dt_france.date()
+    start_time = dt_france.time().replace(tzinfo=None)
 
     return {
         "city":        normalize_city(city),
@@ -126,7 +133,15 @@ def normalize_event_payload(city: str, event: dict[str, Any]) -> dict[str, Any] 
         "start_time":  start_time,
         "location":    str(event.get("location") or "")[:255] or None,
         "category":    str(event.get("category") or "Evenement")[:100],
-        # URL directe OpenAgenda — transmise au pipeline pour être
-        # sauvegardée en BDD et retournée au frontend pour le lien cliquable
-        "url":         url,
+        # URL directe OpenAgenda — sauvegardée en BDD
+        # retournée au frontend pour le lien cliquable
+        "url":         str(event.get("url") or "")[:500] or None,
+        # Coordonnées GPS réelles du lieu de l'event
+        # Retournées par OpenAgenda via location.latitude / location.longitude
+        # None si absent — évite de placer un marqueur au milieu de l'océan
+        "lat":         to_float_or_none(event.get("lat")),
+        "lon":         to_float_or_none(event.get("lon")),
+        # Adresse complète du lieu — utilisée dans le popup de la carte
+        # et pour le bouton itinéraire Google Maps
+        "address":     str(event.get("address") or "")[:500] or None,
     }

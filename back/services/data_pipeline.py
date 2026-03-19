@@ -54,7 +54,7 @@ def get_events_for_city(db: Session, city: str, limit: int = 50) -> list[Event]:
     today    = now.date()
     now_time = now.time()
 
-    # Récupère les events à venir en filtrant par date ET heure Paris
+    # Récupère les events à venir en filtrant par date ET heure France
     # — events futurs (date > aujourd'hui)
     # — events aujourd'hui dont l'heure n'est pas encore passée
     rows = (
@@ -151,7 +151,14 @@ def events_to_response(rows: list[Event]) -> list[dict]:
             "location":    row.location,
             "category":    row.category,
             "description": row.description,
-            "url":         row.url,
+            "url":         row.url,          # URL directe OpenAgenda
+            # Coordonnées GPS réelles du lieu — utilisées par MapSection
+            # pour placer les marqueurs précisément sur la carte
+            "lat":         row.lat,          # Latitude GPS du lieu
+            "lon":         row.lon,          # Longitude GPS du lieu
+            # Adresse complète — utilisée dans le popup carte
+            # et pour le bouton itinéraire Google Maps
+            "address":     row.address,      # Adresse complète du lieu
             "source":      "database",
         })
     return payload

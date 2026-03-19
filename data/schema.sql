@@ -43,9 +43,12 @@ CREATE TABLE events (
     description TEXT,
     event_date DATE NOT NULL,
     start_time TIME,
-    location VARCHAR(255),
+    location VARCHAR(255),                                     -- Nom du lieu
     category VARCHAR(100),
-    url VARCHAR(500),                                          -- ← URL directe OpenAgenda
+    url VARCHAR(500),                                          -- URL directe OpenAgenda
+    lat DECIMAL(10,7),                                         -- Latitude GPS du lieu
+    lon DECIMAL(10,7),                                         -- Longitude GPS du lieu
+    address VARCHAR(500),                                      -- Adresse complète du lieu
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

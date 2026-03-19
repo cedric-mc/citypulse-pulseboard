@@ -119,9 +119,18 @@ def upsert_events(db: Session, city_name: str, events: list[dict]) -> int:
         if ext:
             exists = db.query(Event).filter(Event.external_id == ext).first()
             if exists:
-                # Met à jour l'URL si elle était manquante sur un event déjà en BDD
+                # Met à jour les champs manquants sur un event déjà en BDD
+                # URL manquante → on la complète
                 if not exists.url and payload.get("url"):
                     exists.url = payload.get("url")
+                # Coords GPS manquantes → on les complète
+                if not exists.lat and payload.get("lat"):
+                    exists.lat = payload.get("lat")
+                if not exists.lon and payload.get("lon"):
+                    exists.lon = payload.get("lon")
+                # Adresse manquante → on la complète
+                if not exists.address and payload.get("address"):
+                    exists.address = payload.get("address")
                 continue
 
         row = Event(
@@ -134,6 +143,13 @@ def upsert_events(db: Session, city_name: str, events: list[dict]) -> int:
             location    = payload["location"],
             category    = payload["category"],
             url         = payload.get("url"),
+            # Coordonnées GPS réelles du lieu de l'event
+            # Utilisées par MapSection pour placer les marqueurs précisément
+            lat         = payload.get("lat"),
+            lon         = payload.get("lon"),
+            # Adresse complète du lieu — utilisée dans le popup carte
+            # et pour le bouton itinéraire Google Maps
+            address     = payload.get("address"),
         )
         db.add(row)
         inserted += 1
@@ -149,15 +165,7 @@ async def collect_for_city(db: Session, city_name: str) -> dict:
         get_events(normalized_city),
     )
 
-    events = events_raw.get("events", []) if isinstance(events_raw, dict) else []
-
-    # DEBUG — affiche le premier event brut retourné par OpenAgenda
-    # Permet de vérifier si le champ "url" est bien présent
-    if events:
-        print("=== DEBUG EVENT BRUT ===")
-        print(events[0])
-        print("========================")
-
+    events  = events_raw.get("events", []) if isinstance(events_raw, dict) else []
     weather = normalize_weather_payload(normalized_city, weather_raw)
     air     = normalize_air_payload(normalized_city, air_raw)
     score   = compute_global_score(weather, air, len(events))

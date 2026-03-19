@@ -57,7 +57,16 @@ class Event(Base):
     description = Column(Text)                         # Description longue
     event_date  = Column(Date)                          # Date de l'événement
     start_time  = Column(Time)                          # Heure de début
-    location    = Column(String)                        # Lieu
+    location    = Column(String)                        # Lieu (nom du lieu)
     category    = Column(String)                        # Catégorie (Culture, Loisirs...)
-    url         = Column(String, nullable=True)         # ← URL directe vers OpenAgenda
+    url         = Column(String, nullable=True)         # URL directe vers OpenAgenda
+    # Coordonnées GPS réelles du lieu de l'event
+    # Retournées par OpenAgenda via location.latitude / location.longitude
+    # Utilisées par MapSection pour placer les marqueurs précisément
+    # nullable=True car certains events n'ont pas de géolocalisation
+    lat         = Column(Float, nullable=True)          # Latitude GPS du lieu
+    lon         = Column(Float, nullable=True)          # Longitude GPS du lieu
+    # Adresse complète du lieu — utilisée dans le popup carte
+    # et pour le bouton itinéraire Google Maps
+    address     = Column(String, nullable=True)         # Adresse complète du lieu
     created_at  = Column(DateTime, default=func.now())  # Timestamp automatique
