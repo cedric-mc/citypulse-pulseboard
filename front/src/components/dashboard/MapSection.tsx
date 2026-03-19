@@ -64,6 +64,39 @@ const MapSection = ({ city, aqi, events }: MapSectionProps) => {
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
+    // Fetch real city boundary from Nominatim (OSM)
+    const fetchBoundary = async () => {
+      try {
+        const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)},France&format=json&polygon_geojson=1&limit=1`,
+            { headers: { "User-Agent": "PulseBoard/1.0" } }
+        );
+        const data = await res.json();
+        if (data?.[0]?.geojson) {
+          L.geoJSON(data[0].geojson, {
+            style: {
+              color: "#22c55e",
+              weight: 2,
+              opacity: 0.5,
+              fillColor: "#22c55e",
+              fillOpacity: 0.12,
+            },
+          }).addTo(map);
+        }
+      } catch {
+        // Fallback circle if boundary fetch fails
+        L.circle(coords, {
+          radius: 3000,
+          color: "#22c55e",
+          weight: 2,
+          opacity: 0.4,
+          fillColor: "#22c55e",
+          fillOpacity: 0.12,
+        }).addTo(map);
+      }
+    };
+    fetchBoundary();
+
     // City center marker (AQI)
     const markerColor = aqi <= 2 ? "#22c55e" : aqi <= 3 ? "#f59e0b" : "#ef4444";
     const cityIcon = L.divIcon({
@@ -82,7 +115,6 @@ const MapSection = ({ city, aqi, events }: MapSectionProps) => {
       const eventGroup = L.layerGroup().addTo(map);
 
       safeEvents.forEach((event, i) => {
-        // Spread events in a circle around city center
         const angle = (2 * Math.PI * i) / Math.max(safeEvents.length, 1);
         const radius = 0.008 + Math.random() * 0.012;
         const lat = coords[0] + Math.cos(angle) * radius;
