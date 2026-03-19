@@ -11,7 +11,7 @@
 import httpx
 import asyncio
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -35,14 +35,17 @@ def auth_headers() -> dict:
 
 # ============================================================
 # Helpers : gestion du cache avec expiration 24h
-# Une fois les UIDs trouvés, on les stocke pour éviter de
-# refaire les tests à chaque requête
+# Correction du bug : utilise total_seconds() au lieu de seconds
+# seconds retourne seulement la partie secondes (0-59)
+# total_seconds() retourne la durée totale en secondes
 # ============================================================
 def get_cached_uids(city: str) -> list[str] | None:
     entry = agenda_cache.get(city)
     if not entry:
         return None
-    age_hours = (datetime.now(timezone.utc) - entry["cached_at"]).seconds / 3600
+    # ← FIX : total_seconds() au lieu de .seconds pour éviter
+    # que le cache ne soit jamais expiré après 1h
+    age_hours = (datetime.now(timezone.utc) - entry["cached_at"]).total_seconds() / 3600
     if age_hours > CACHE_TTL_HOURS:
         del agenda_cache[city]
         return None
@@ -67,8 +70,8 @@ async def find_agenda_uids(city: str, client: httpx.AsyncClient, max_agendas: in
     if cached:
         return cached
 
-    # Recherche les agendas de la ville
-    url = f"{BASE_URL}/agendas?search={city}&size=10&lang=fr"
+    # Recherche les agendas de la ville — size=20 pour plus de choix
+    url = f"{BASE_URL}/agendas?search={city}&size=20&lang=fr"
 
     try:
         response = await client.get(url, headers=auth_headers())
@@ -134,10 +137,11 @@ async def find_agenda_uids(city: str, client: httpx.AsyncClient, max_agendas: in
 # Fonction : fetch_agenda_events(uid, city, client)
 # Récupère les prochains événements d'un agenda spécifique
 # timings[gte] = maintenant → exclut les horaires déjà passés
-# Le filtre de date côté frontend complète ce filtre backend
+# Utilise nextTiming pour les events récurrents — plus fiable
+# que firstTiming qui pointe vers la première occurrence historique
 # ============================================================
 async def fetch_agenda_events(uid: str, city: str, client: httpx.AsyncClient) -> list[dict]:
-    now = datetime.now(timezone.utc)
+    now     = datetime.now(timezone.utc)
     now_str = now.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
     url = (
@@ -164,10 +168,21 @@ async def fetch_agenda_events(uid: str, city: str, client: httpx.AsyncClient) ->
         events = []
         for event in data.get("events", []):
             event_uid = event.get("uid", "")
+
+            # --------------------------------------------------------
+            # Utilise nextTiming en priorité sur firstTiming
+            # nextTiming = prochaine occurrence à venir (events récurrents)
+            # firstTiming = première occurrence historique (peut être en 2025)
+            # Fallback sur firstTiming si nextTiming absent
+            # --------------------------------------------------------
+            next_timing  = event.get("nextTiming", {}) or {}
+            first_timing = event.get("firstTiming", {}) or {}
+            date_begin   = next_timing.get("begin") or first_timing.get("begin", "")
+
             events.append({
                 "title":       event.get("title", "Sans titre"),
                 "description": event.get("description", ""),
-                "date":        event.get("firstTiming", {}).get("begin", ""),
+                "date":        date_begin,
                 "location":    event.get("location", {}).get("name", ""),
                 "city":        city,
                 "category":    (
@@ -194,7 +209,7 @@ async def fetch_agenda_events(uid: str, city: str, client: httpx.AsyncClient) ->
 # Fonctionne pour toutes les villes de façon uniforme :
 #   - Trouve les N agendas avec le plus d'events réels
 #   - Récupère leurs events en parallèle
-#   - Fusionne, dédoublonne, trie par date
+#   - Fusionne, dédoublonne par titre, trie par date
 # ============================================================
 async def get_events(city: str):
     async with httpx.AsyncClient() as client:
@@ -222,19 +237,22 @@ async def get_events(city: str):
         # Tri final par date croissante (les plus proches d'abord)
         all_events.sort(key=lambda e: e["date"] or "9999")
 
-        # Dédoublonnage par URL au cas où un même événement
-        # apparaîtrait dans plusieurs agendas agrégés
+        # Dédoublonnage par titre pour éviter les doublons
+        # d'events récurrents insérés depuis plusieurs agendas
         seen = set()
         unique_events = []
         for event in all_events:
-            key = event["url"]
+            key = event["title"].lower().strip()
             if key not in seen:
                 seen.add(key)
                 unique_events.append(event)
 
+        # Limite à 5 events max comme demandé
+        top_events = unique_events[:5]
+
         return {
             "city":   city,
-            "count":  len(unique_events),
+            "count":  len(top_events),
             "source": "live",
-            "events": unique_events
+            "events": top_events
         }

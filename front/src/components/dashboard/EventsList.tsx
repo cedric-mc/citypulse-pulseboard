@@ -8,11 +8,11 @@ interface EventsListProps {
 
 const categoryColors: Record<string, string> = {
   "événement": "bg-primary/15 text-primary",
-  conférence: "bg-primary/15 text-primary",
-  visite: "bg-success/15 text-success",
-  concert: "bg-warning/15 text-warning",
-  spectacle: "bg-destructive/15 text-destructive",
-  exposition: "bg-accent/15 text-accent-foreground",
+  conférence:  "bg-primary/15 text-primary",
+  visite:      "bg-success/15 text-success",
+  concert:     "bg-warning/15 text-warning",
+  spectacle:   "bg-destructive/15 text-destructive",
+  exposition:  "bg-accent/15 text-accent-foreground",
 };
 
 const getCategoryStyle = (cat: string) => {
@@ -33,15 +33,9 @@ const formatDate = (dateStr: string, timeStr?: string) => {
 };
 
 const EventsList = ({ data }: EventsListProps) => {
-  const now = new Date();
-
-  // Filtre les événements déjà passés en combinant date + heure
-  // Double sécurité avec le filtre backend timings[gte]=now
-  const events = (Array.isArray(data) ? data : []).filter(event => {
-    if (!event.date) return true;
-    const eventDateTime = new Date(`${event.date}T${event.time || "00:00:00"}`);
-    return eventDateTime > now;
-  });
+  // Le backend gère déjà le filtre temporel via timings[gte]=now
+  // Pas besoin de filtrer côté frontend — on fait confiance au backend
+  const events = Array.isArray(data) ? data : [];
 
   return (
     <motion.div

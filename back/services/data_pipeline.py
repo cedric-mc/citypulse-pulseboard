@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from datetime import date
-
-from sqlalchemy import func
+from datetime import date, datetime
+from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session
 
 from models import AirQualityData, Event, WeatherData
@@ -49,24 +48,35 @@ def get_latest_air_quality(db: Session, city: str) -> AirQualityData | None:
     )
 
 
-def get_events_for_city(db: Session, city: str, limit: int = 20) -> list[Event]:
+def get_events_for_city(db: Session, city: str, limit: int = 50) -> list[Event]:
     city_name = normalize_city(city)
-    today = date.today()
+    now      = datetime.now()
+    today    = now.date()
+    now_time = now.time()
 
-    # Récupère les événements à venir triés par date puis heure
-    # Limite à 20 pour avoir assez d'events après dédoublonnage
+    # Récupère les events à venir en filtrant par date ET heure Paris
+    # — events futurs (date > aujourd'hui)
+    # — events aujourd'hui dont l'heure n'est pas encore passée
     rows = (
         db.query(Event)
-        .filter(func.lower(Event.city) == city_name.lower(), Event.event_date >= today)
-        .order_by(Event.event_date.asc(), Event.start_time.asc(), Event.id.desc())
+        .filter(
+            func.lower(Event.city) == city_name.lower(),
+            or_(
+                Event.event_date > today,
+                and_(
+                    Event.event_date == today,
+                    Event.start_time >= now_time
+                )
+            )
+        )
+        .order_by(Event.event_date.asc(), Event.start_time.asc())
         .limit(limit)
         .all()
     )
 
     if rows:
-        # Dédoublonnage par titre uniquement — évite qu'un même événement
-        # apparaisse deux fois s'il a été collecté depuis deux agendas différents
-        # On garde le premier trouvé (celui avec l'URL si disponible)
+        # Dédoublonnage par titre — évite qu'un même événement
+        # apparaisse deux fois s'il vient de deux agendas différents
         seen = set()
         unique_rows = []
         for row in rows:
@@ -74,17 +84,28 @@ def get_events_for_city(db: Session, city: str, limit: int = 20) -> list[Event]:
             if key not in seen:
                 seen.add(key)
                 unique_rows.append(row)
-        return unique_rows
+        # Limite à 5 events max
+        return unique_rows[:5]
 
-    # Fallback — retourne les derniers events connus si aucun à venir
-    # Utile en fin de journée quand tous les events du jour sont passés
-    return (
+    # Fallback — retourne les 5 prochains events futurs
+    # filtrés par heure pour éviter les events passés
+    fallback = (
         db.query(Event)
-        .filter(func.lower(Event.city) == city_name.lower())
-        .order_by(Event.event_date.desc(), Event.start_time.desc(), Event.id.desc())
-        .limit(limit)
+        .filter(
+            func.lower(Event.city) == city_name.lower(),
+            or_(
+                Event.event_date > today,
+                and_(
+                    Event.event_date == today,
+                    Event.start_time >= now_time
+                )
+            )
+        )
+        .order_by(Event.event_date.asc(), Event.start_time.asc())
+        .limit(5)
         .all()
     )
+    return fallback
 
 
 def weather_to_response(row: WeatherData) -> dict:
@@ -130,7 +151,7 @@ def events_to_response(rows: list[Event]) -> list[dict]:
             "location":    row.location,
             "category":    row.category,
             "description": row.description,
-            "url":         row.url,    # ← URL directe vers OpenAgenda
+            "url":         row.url,
             "source":      "database",
         })
     return payload

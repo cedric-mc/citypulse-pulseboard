@@ -6,8 +6,12 @@ from __future__ import annotations
 # prêtes à être insérées en base de données
 # ============================================================
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Any
+
+# Fuseau horaire Paris (UTC+1 en hiver, UTC+2 en été)
+# On utilise la conversion automatique via astimezone
+PARIS_TZ = timezone(timedelta(hours=1))
 
 
 def normalize_city(raw_city: str) -> str:
@@ -85,16 +89,26 @@ def normalize_air_payload(city: str, payload: dict[str, Any]) -> dict[str, Any]:
 # Normalisation événement
 # Transforme la réponse OpenAgenda en payload BDD propre
 # Retourne None si la date est absente (event invalide)
+# Convertit les dates en heure de Paris pour cohérence
 # ============================================================
 def normalize_event_payload(city: str, event: dict[str, Any]) -> dict[str, Any] | None:
     date_raw = event.get("date")
     dt = parse_iso_datetime(date_raw)
-    event_date = dt.date() if dt else None
-    start_time = dt.time().replace(tzinfo=None) if dt else None
 
     # Un event sans date est invalide → on le rejette
-    if not event_date:
+    if not dt:
         return None
+
+    # Convertit en heure de Paris pour éviter les décalages UTC
+    # OpenAgenda retourne des dates avec fuseau (+01:00 ou +02:00)
+    # On normalise tout en heure Paris pour cohérence BDD/frontend
+    try:
+        dt_paris = dt.astimezone(PARIS_TZ)
+    except Exception:
+        dt_paris = dt
+
+    event_date = dt_paris.date()
+    start_time = dt_paris.time().replace(tzinfo=None)
 
     # URL directe vers la page de l'événement sur OpenAgenda
     # Champ séparé de external_id pour éviter toute confusion
