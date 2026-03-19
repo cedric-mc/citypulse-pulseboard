@@ -43,8 +43,8 @@ async def get_weather(city: str):
             "humidity":    data["main"]["humidity"],               # %
             "wind_speed":  round(data["wind"]["speed"] * 3.6, 1), # m/s → km/h
             "description": data["weather"][0]["description"],     # ex: "ciel dégagé"
-            "icon":        data["weather"][0]["icon"],             # ex: "01d"
-            "icon_url":    f"https://openweathermap.org/img/wn/{data['weather'][0]['icon']}@2x.png"
+            "icon": data["weather"][0]["icon"],             # ex: "01d"
+            "icon_url": f"https://openweathermap.org/img/wn/{data['weather'][0]['icon']}@2x.png"
         }
 
 # ============================================================

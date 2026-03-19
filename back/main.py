@@ -2,6 +2,7 @@
 # main.py — Point d'entrée de l'application FastAPI
 # ============================================================
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base

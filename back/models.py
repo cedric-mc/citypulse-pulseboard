@@ -10,6 +10,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+
 # ============================================================
 # Table : weather_data
 # Stocke les données météo récupérées via OpenWeatherMap
@@ -27,9 +28,10 @@ class WeatherData(Base):
     icon_code   = Column(String)
     measured_at = Column(DateTime, default=func.now())
 
+
 # ============================================================
 # Table : air_quality_data
-# Stocke les données qualité de l'air via OpenAQ / OpenWeatherMap
+# Stocke les données qualité de l'air via OpenWeatherMap
 # ============================================================
 class AirQualityData(Base):
     __tablename__ = "air_quality"
@@ -41,6 +43,7 @@ class AirQualityData(Base):
     no2        = Column(Float)
     o3         = Column(Float)
     measured_at = Column(DateTime, default=func.now())
+
 
 # ============================================================
 # Table : events
